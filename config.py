@@ -26,7 +26,7 @@ PERMUTE_MASK = True
 INIT_IDENTITY = True
 LEARNING_RATE = 5e-4
 BATCH_SIZE = 32
-MAX_ITER = 30000
+MAX_ITER = 50000
 
 SAMPLES_PER_CONTEXT = 50  # Numero di traiettorie da generare per ogni contesto
 #N_SAMPLES = 20 # Numero di set di pesi (quindi numero di traiettorie) che voglio generare nella fase di sampling
@@ -35,7 +35,7 @@ SAMPLES_PER_CONTEXT = 50  # Numero di traiettorie da generare per ogni contesto
 
 TRAJECTORY_FOLDER = "dataset_family_2000/"
 OUTPUT_DMP_WEIGHTS_CSV = "dmp_weights_family_final.csv"
-MODEL_PATH = "trained_CNF_family_final.pth"  #trained model path
+MODEL_PATH = "trained_CNF_family_final_2.pth"  #trained model path
 #CONTEXT_CSV_PATH = "context_binary.csv" # new context file
 #GENERATED_WEIGHTS_CSV = "generated_weights_traj_safe_300.csv" 
 #OUTPUT_TRAJECTORY_FOLDER = "generated_trajectories/"
