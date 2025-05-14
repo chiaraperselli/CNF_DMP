@@ -15,9 +15,9 @@ N_WEIGHTS_TOTAL = 2 * N_WEIGHTS_PER_DIM # solo x e y
 
 # Parametri CNFs
 
-NUM_LAYERS = 10
+NUM_LAYERS = 12
 NUM_BLOCKS = 2
-NUM_HIDDEN_CHANNELS = 128
+NUM_HIDDEN_CHANNELS = 256
 #HIDDEN_FEATURES = 256
 NUM_BINS = 12
 TAIL_BOUND = 3.0
@@ -34,8 +34,8 @@ SAMPLES_PER_CONTEXT = 50  # Numero di traiettorie da generare per ogni contesto
 # File paths
 
 TRAJECTORY_FOLDER = "dataset_family_2000/"
-OUTPUT_DMP_WEIGHTS_CSV = "dmp_weights_family_final.csv"
-MODEL_PATH = "trained_CNF_family_final_2.pth"  #trained model path
+OUTPUT_DMP_WEIGHTS_CSV = "dmp_weights_family_final_continuous.csv"
+MODEL_PATH = "trained_CNF_family_final_continuous.pth"  #trained model path
 #CONTEXT_CSV_PATH = "context_binary.csv" # new context file
 #GENERATED_WEIGHTS_CSV = "generated_weights_traj_safe_300.csv" 
 #OUTPUT_TRAJECTORY_FOLDER = "generated_trajectories/"

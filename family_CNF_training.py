@@ -29,14 +29,14 @@ std_x = np.where(std_x == 0, 1.0, std_x)
 X = (X - mean_x) / std_x
 
 # Mantieni il contesto binario senza normalizzazione
-mean_c = np.zeros_like(C[0])
-std_c = np.ones_like(C[0])
+# mean_c = np.zeros_like(C[0])
+# std_c = np.ones_like(C[0])
 
 # Normlaizzazione contesto geometrico
-# mean_c = C.mean(axis=0)
-# std_c = C.std(axis=0)
-# std_c = np.where(std_c == 0, 1.0, std_c)  # evita divisione per 0
-# C = (C - mean_c) / std_c
+mean_c = C.mean(axis=0)
+std_c = C.std(axis=0)
+std_c = np.where(std_c == 0, 1.0, std_c)  # evita divisione per 0
+C = (C - mean_c) / std_c
 
 # Tensori
 X = torch.tensor(X, dtype=torch.float32)

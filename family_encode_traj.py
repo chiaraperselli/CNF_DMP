@@ -25,6 +25,9 @@ all_data = []
 #     [2.6, 1.5],  # Apertura 4
 # ])
 
+# Coordinate x delle 4 aperture (fisse)
+aperture_x = [0.5, 1.2, 1.9, 2.6]
+
 dmp_examples = []
 max_plots = 500  # Numero di traiettorie da visualizzare
 
@@ -64,10 +67,7 @@ for context_folder in sorted(os.listdir(base_dir)):
             weights = dmp.get_weights()  # shape (n_dims, n_weights_per_dim)
             weights_xy = weights[:40].reshape(1, -1)  # solo x, y (2 * 20 = 40 pesi)
 
-            # Concatena pesi + contesto (4 bit)
-            context_arr = np.array(context_bin).reshape(1, -1)
-            full_row = np.hstack([weights_xy, context_arr])  # shape (1, 24)
-            all_data.append(full_row)
+            
 
             # Costruzione contesto geometrico continuo (8 parametri di contesto)
             # context_geom = []
@@ -78,15 +78,31 @@ for context_folder in sorted(os.listdir(base_dir)):
             #             context_geom.extend([0.0, 0.0])
             # context_arr = np.array(context_geom).reshape(1, -1)  # shape (1, 8)
 
-            # Concatena pesi + contesto
-            # full_row = np.hstack([weights_xy, context_arr])  # shape (1, 48)
-            # all_data.append(full_row)
+
+
+            # Costruzione del nuovo contesto: solo coordinate x se aperta, altrimenti 0.0
+            context_geom_x = []
+            for i, b in enumerate(context_bin):
+                if b == 1:
+                    context_geom_x.append(aperture_x[i])
+                else:
+                    context_geom_x.append(0.0)
+
+            context_arr = np.array(context_geom_x).reshape(1, -1)  # shape (1, 4)
+
+
+            # Concatena pesi + contesto (4 bit)
+            # context_arr = np.array(context_bin).reshape(1, -1)
+
+
+            full_row = np.hstack([weights_xy, context_arr])  # shape (1, 24)
+            all_data.append(full_row)
 
 
             # salva fino a max_plots traiettorie per il plot
-            if len(dmp_examples) < max_plots:
-                T_gen, Y_gen = dmp.open_loop()
-                dmp_examples.append((T_gen, Y_gen[:, :2]))
+            # if len(dmp_examples) < max_plots:
+            #     T_gen, Y_gen = dmp.open_loop()
+            #     dmp_examples.append((T_gen, Y_gen[:, :2]))
 
 # Salva in CSV finale
 all_data_matrix = np.vstack(all_data)
