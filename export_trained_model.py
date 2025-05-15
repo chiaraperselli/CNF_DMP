@@ -34,7 +34,7 @@ for _ in range(NUM_LAYERS):
 model = ConditionalNormalizingFlow(base, flows)
 
 # === Carica il checkpoint originale ===
-checkpoint = torch.load("trained_CNF_family_final_continuous.pth", map_location="cpu",weights_only=False)
+checkpoint = torch.load("trained_CNF_family_final_continuous_2.pth", map_location="cpu",weights_only=False)
 model.load_state_dict(checkpoint["model_state_dict"])
 
 mean_x = checkpoint["mean_x"]

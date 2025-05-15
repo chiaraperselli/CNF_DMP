@@ -13,7 +13,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from config import *
 
 # Carica il modello CNF 
-def load_model(path, dim, context_dim, num_layers):
+def load_model(weight_path, dim, context_dim, num_layers):
     base = DiagGaussian(dim)
     flows = []
     for _ in range(num_layers):
@@ -35,32 +35,54 @@ def load_model(path, dim, context_dim, num_layers):
     model = ConditionalNormalizingFlow(base, flows)
     # checkpoint = torch.load(path, map_location=torch.device("cpu"))
     # model.load_state_dict(checkpoint['model_state_dict'])
-    checkpoint = torch.load(MODEL_PATH, map_location='cpu')
-    model.load_state_dict(checkpoint['model_state_dict'])
-    mean_c = checkpoint['mean_c']
-    std_c = checkpoint['std_c']
-
+    model.load_state_dict(torch.load(weight_path, map_location='cpu'))
     model.eval()
-    return model, checkpoint['mean_x'], checkpoint['std_x'], checkpoint['mean_c'], checkpoint['std_c']
+    return model
+    # return model, checkpoint['mean_x'], checkpoint['std_x'], checkpoint['mean_c'], checkpoint['std_c']
 
-# Genera pesi da contesto geometrico 
-def generate_weights_from_context(context_geom, model_path, samples_per_context):
+# Genera pesi da contesto geometrico (modello allenato su PC)
+# def generate_weights_from_context(context_geom, model_path, samples_per_context):
+#     dim = N_WEIGHTS_TOTAL
+#     context_dim = N_CONTEXT_DIMS
+#     device = torch.device("cpu")
+
+#     model, mean_x, std_x, mean_c, std_c = load_model(model_path, dim, context_dim, NUM_LAYERS)
+#     model.to(device)
+
+#     context_geom = (context_geom - mean_c) / std_c
+#     context_tensor = torch.tensor(context_geom, dtype=torch.float32).repeat(samples_per_context, 1).to(device)
+
+#     with torch.no_grad():
+#         samples, _ = model.sample(samples_per_context, context=context_tensor)
+#     samples = samples.cpu().numpy() * std_x + mean_x
+
+#     # pd.DataFrame(samples).to_csv("generated_weights_geometric_context_0111.csv", index=False, header=False)
+#     # print(f"Salvati {samples.shape[0]} set di pesi ")
+#     return samples
+
+# Genera pesi da contesto geometrico (modello allenato su VM)
+def generate_weights_from_context(context_geom, weight_path, stats_path, samples_per_context):
     dim = N_WEIGHTS_TOTAL
     context_dim = N_CONTEXT_DIMS
     device = torch.device("cpu")
 
-    model, mean_x, std_x, mean_c, std_c = load_model(model_path, dim, context_dim, NUM_LAYERS)
+    # Carica modello e statistiche
+    model = load_model(weight_path, dim, context_dim, NUM_LAYERS)
     model.to(device)
 
+    stats = np.load(stats_path)
+    mean_x = stats['mean_x']
+    std_x = stats['std_x']
+    mean_c = stats['mean_c']
+    std_c = stats['std_c']
+
+    # Normalizza il contesto
     context_geom = (context_geom - mean_c) / std_c
     context_tensor = torch.tensor(context_geom, dtype=torch.float32).repeat(samples_per_context, 1).to(device)
 
     with torch.no_grad():
         samples, _ = model.sample(samples_per_context, context=context_tensor)
     samples = samples.cpu().numpy() * std_x + mean_x
-
-    # pd.DataFrame(samples).to_csv("generated_weights_geometric_context_0111.csv", index=False, header=False)
-    # print(f"Salvati {samples.shape[0]} set di pesi ")
     return samples
 
 # Converte pesi in traiettorie DMP 
@@ -141,7 +163,7 @@ if __name__ == "__main__":
     # context_geom = (context_geom - mean_c) / std_c
 
 
-    samples = generate_weights_from_context(context_geom, MODEL_PATH, SAMPLES_PER_CONTEXT)
+    samples = generate_weights_from_context(context_geom, "model_weights.pt", "context_stats.npz", SAMPLES_PER_CONTEXT)
     trajectories = weights_to_dmp_trajectories(samples)
 
 
@@ -167,6 +189,6 @@ if __name__ == "__main__":
     plt.grid(True)
     plt.axis('equal')
     plt.legend()
-    plt.title("Sampled trajectories - context {user_input}")
+    plt.title(f"Sampled trajectories - context {user_input}")
     plt.tight_layout()
     plt.show()
