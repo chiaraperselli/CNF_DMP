@@ -33,8 +33,13 @@ def load_model(path, dim, context_dim, num_layers):
             )
         )
     model = ConditionalNormalizingFlow(base, flows)
-    checkpoint = torch.load(path, map_location=torch.device("cpu"))
+    # checkpoint = torch.load(path, map_location=torch.device("cpu"))
+    # model.load_state_dict(checkpoint['model_state_dict'])
+    checkpoint = torch.load(MODEL_PATH, map_location='cpu')
     model.load_state_dict(checkpoint['model_state_dict'])
+    mean_c = checkpoint['mean_c']
+    std_c = checkpoint['std_c']
+
     model.eval()
     return model, checkpoint['mean_x'], checkpoint['std_x'], checkpoint['mean_c'], checkpoint['std_c']
 
@@ -91,19 +96,54 @@ def weights_to_dmp_trajectories(weights_matrix):
         all_trajs.append(Y[:, :2])
     return all_trajs
 
-# MAIN 
+# MAIN per contesto geomtetrico con 8 parametri
+# if __name__ == "__main__":
+#     print("Inserisci 8 numeri separati da spazio (es: 0.5 1.5 1.2 1.5 0 0 0 0)")
+#     user_input = input("Contesto geometrico (8 valori): ")
+#     try:
+#         context_geom = np.array([float(x) for x in user_input.strip().split()])
+#         assert context_geom.shape[0] == 8
+#     except:
+#         print("ERRORE: devi inserire esattamente 8 numeri separati da spazio.")
+#         sys.exit(1)
+
+#     samples = generate_weights_from_context(context_geom.reshape(1, -1), MODEL_PATH, SAMPLES_PER_CONTEXT)
+#     trajectories = weights_to_dmp_trajectories(samples)
+
+# MAIN per contesto geomtetrico con 4 parametri (solo coord x aperture)
 if __name__ == "__main__":
-    print("Inserisci 8 numeri separati da spazio (es: 0.5 1.5 1.2 1.5 0 0 0 0)")
-    user_input = input("Contesto geometrico (8 valori): ")
+    print("Inserisci un contesto binario (es: 1001): ")
+    user_input = input("Contesto: ")
     try:
-        context_geom = np.array([float(x) for x in user_input.strip().split()])
-        assert context_geom.shape[0] == 8
+        assert len(user_input.strip()) == 4
+        context_bin = [int(c) for c in user_input.strip()]
     except:
-        print("ERRORE: devi inserire esattamente 8 numeri separati da spazio.")
+        print("ERRORE: devi inserire una stringa binaria lunga 4 cifre (es: 1010)")
         sys.exit(1)
 
-    samples = generate_weights_from_context(context_geom.reshape(1, -1), MODEL_PATH, SAMPLES_PER_CONTEXT)
+    # Coordinate fisse delle aperture
+    aperture_x = [0.5, 1.2, 1.9, 2.6]
+
+    # Costruzione del contesto geometrico continuo: solo le x delle aperture aperte, 0 altrimenti
+    context_geom = []
+    for i, b in enumerate(context_bin):
+        if b == 1:
+            context_geom.append(aperture_x[i])
+        else:
+            context_geom.append(0.0)
+
+    context_geom = np.array(context_geom, dtype=np.float32).reshape(1, -1)
+
+    #Normalizzazione Z-score come nel training
+    # mean_c = np.array([MEAN_X1, MEAN_X2, MEAN_X3, MEAN_X4], dtype=np.float32).reshape(1, -1)
+    # std_c = np.array([STD_X1, STD_X2, STD_X3, STD_X4], dtype=np.float32).reshape(1, -1)
+    # std_c = np.where(std_c == 0, 1.0, std_c)  # evitare divisione per 0
+    # context_geom = (context_geom - mean_c) / std_c
+
+
+    samples = generate_weights_from_context(context_geom, MODEL_PATH, SAMPLES_PER_CONTEXT)
     trajectories = weights_to_dmp_trajectories(samples)
+
 
     # Plot
     plt.figure(figsize=(8, 6))
@@ -127,6 +167,6 @@ if __name__ == "__main__":
     plt.grid(True)
     plt.axis('equal')
     plt.legend()
-    plt.title("Sampled trajectories - context 0001")
+    plt.title("Sampled trajectories - context {user_input}")
     plt.tight_layout()
     plt.show()
