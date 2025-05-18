@@ -18,9 +18,9 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from config import *
 
-# Carica dataset aggiornato (14 contesto + 180 pesi)
-df = pd.read_csv(OUTPUT_DMP_WEIGHTS_CSV, header=None)
-n_context_dims = N_CONTEXT_DIMS
+# Carica dataset 
+df = pd.read_csv("300_traj_split/train_dataset.csv", header=None)
+n_context_dims = 4
 C = df.iloc[:, -n_context_dims:].values.astype(np.float32)  # ultime colonne → contesto
 X = df.iloc[:, :-n_context_dims].values.astype(np.float32)  # prime colonne → pesi
 
@@ -48,22 +48,23 @@ context_dim = C.shape[1]
 
 # Distribuzione base
 base = DiagGaussian(dim)
-num_layers = NUM_LAYERS
+num_layers = 10
 flows = []
 for _ in range(num_layers):
     flows.append(
         CircularAutoregressiveRationalQuadraticSpline(
             num_input_channels=dim, # dimensione dei pesi
-            num_blocks=NUM_BLOCKS,
-            num_hidden_channels=NUM_HIDDEN_CHANNELS,
+            num_blocks=2,
+            num_hidden_channels=128,
             ind_circ=[],# indici delle dimensioni circolari (in questo caso non sono usati)
             num_context_channels=context_dim,#qui il contesto viene passato al modello
-            num_bins=NUM_BINS,# numero di bin (segmenti) per il Rational Quadratic Spline
-            tail_bound=TAIL_BOUND,# bound per i valori estremi
+            num_bins=12,# numero di bin (segmenti) per il Rational Quadratic Spline
+            tail_bound=3.0,# bound per i valori estremi
             activation=nn.ReLU, 
-            dropout_probability=DROPOUT_PROB,
-            permute_mask=PERMUTE_MASK,
-            init_identity=INIT_IDENTITY
+            dropout_probability=0.05,
+            learning_rate = 5e-4,
+            permute_mask=True,
+            init_identity=True
         )
     )
 
@@ -71,8 +72,8 @@ model = ConditionalNormalizingFlow(base, flows).to(device) # crea il modello di 
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-3) # ottimizzatore Adam per l'addestramento
 
 # Training loop
-batch_size = BATCH_SIZE
-max_iter = MAX_ITER
+batch_size = 32
+max_iter = 20000
 loss_hist = []
 
 print("Training Conditional Neural Spline Flow...")
@@ -94,14 +95,14 @@ for i in tqdm(range(max_iter)):
     if i % 500 == 0:
         print(f"[Iter {i}] Loss: {loss.item():.4f}")
 
-    if i % 1000 == 0 and i > 0:
-        plt.plot(loss_hist)
-        plt.title(f"Loss fino a iterazione {i}")
-        plt.xlabel("Iterazione")
-        plt.ylabel("Loss")
-        plt.grid(True)
-        plt.tight_layout()
-        plt.show()
+    # if i % 1000 == 0 and i > 0:
+    #     plt.plot(loss_hist)
+    #     plt.title(f"Loss fino a iterazione {i}")
+    #     plt.xlabel("Iterazione")
+    #     plt.ylabel("Loss")
+    #     plt.grid(True)
+    #     plt.tight_layout()
+    #     plt.show()
 
 
 # Plot loss
@@ -116,30 +117,30 @@ plt.tight_layout()
 plt.show()
 
 
-# Generazione di campioni condizionati
-model.eval() # Imposta il modello in modalità di valutazione per la fase di generazione
-with torch.no_grad():
-    # Prendi un contesto reale dal dataset
-    context = C[0].unsqueeze(0) #
-    context = context.to(device).repeat(1000, 1)
-    samples, _ = model.sample(1000, context=context) # Genera 1000 campioni
-    samples = samples.cpu().numpy() * std_x + mean_x # Denormalizza i campioni
+# # Generazione di campioni condizionati
+# model.eval() # Imposta il modello in modalità di valutazione per la fase di generazione
+# with torch.no_grad():
+#     # Prendi un contesto reale dal dataset
+#     context = C[0].unsqueeze(0) #
+#     context = context.to(device).repeat(1000, 1)
+#     samples, _ = model.sample(1000, context=context) # Genera 1000 campioni
+#     samples = samples.cpu().numpy() * std_x + mean_x # Denormalizza i campioni
 
-# PCA per visualizzazione (distribuzione reale vs generata)
-X_pca = PCA(n_components=2).fit_transform(df.iloc[:, n_context_dims:].values)
-samples_pca = PCA(n_components=2).fit_transform(samples)
+# # PCA per visualizzazione (distribuzione reale vs generata)
+# X_pca = PCA(n_components=2).fit_transform(df.iloc[:, n_context_dims:].values)
+# samples_pca = PCA(n_components=2).fit_transform(samples)
 
-plt.figure(figsize=(12, 5))
-plt.subplot(1, 2, 1)
-plt.scatter(X_pca[:, 0], X_pca[:, 1], alpha=0.5, edgecolor='k')
-plt.title("Distribuzione Reale")
+# plt.figure(figsize=(12, 5))
+# plt.subplot(1, 2, 1)
+# plt.scatter(X_pca[:, 0], X_pca[:, 1], alpha=0.5, edgecolor='k')
+# plt.title("Distribuzione Reale")
 
-plt.subplot(1, 2, 2)
-plt.scatter(samples_pca[:, 0], samples_pca[:, 1], alpha=0.5, edgecolor='k')
-plt.title("Distribuzione Generata")
+# plt.subplot(1, 2, 2)
+# plt.scatter(samples_pca[:, 0], samples_pca[:, 1], alpha=0.5, edgecolor='k')
+# plt.title("Distribuzione Generata")
 
-plt.tight_layout()
-plt.show()
+# plt.tight_layout()
+# plt.show()
 
 # Salvataggio modello allenato
 torch.save({
@@ -148,4 +149,4 @@ torch.save({
     'std_x': std_x,
     'mean_c': mean_c,
     'std_c': std_c
-}, MODEL_PATH)
+}, 'trained_CNF_300_traj-split.pth')
