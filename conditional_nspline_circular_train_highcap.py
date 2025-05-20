@@ -62,7 +62,6 @@ for _ in range(num_layers):
             tail_bound=3.0,# bound per i valori estremi
             activation=nn.ReLU, 
             dropout_probability=0.05,
-            learning_rate = 5e-4,
             permute_mask=True,
             init_identity=True
         )
