@@ -13,7 +13,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from config import *
 
 # Carica il modello CNF 
-def load_model(weight_path, dim, context_dim, num_layers):
+def load_model(model_path, dim, context_dim, num_layers):
     base = DiagGaussian(dim)
     flows = []
     for _ in range(num_layers):
@@ -32,58 +32,63 @@ def load_model(weight_path, dim, context_dim, num_layers):
                 init_identity=INIT_IDENTITY
             )
         )
-    model = ConditionalNormalizingFlow(base, flows)
-    # checkpoint = torch.load(path, map_location=torch.device("cpu"))
+    # model = ConditionalNormalizingFlow(base, flows)
+    # checkpoint = torch.load(MODEL_PATH, map_location=torch.device("cpu"))
     # model.load_state_dict(checkpoint['model_state_dict'])
-    model.load_state_dict(torch.load(weight_path, map_location='cpu'))
+    # model.load_state_dict(torch.load(weight_path, map_location='cpu'))
+    # model.eval()
+    model = ConditionalNormalizingFlow(base, flows)
+    checkpoint = torch.load(model_path, map_location=torch.device("cpu"))
+    model.load_state_dict(checkpoint['model_state_dict'])
     model.eval()
+    return model, checkpoint['mean_x'], checkpoint['std_x'], checkpoint['mean_c'], checkpoint['std_c']
     return model
     # return model, checkpoint['mean_x'], checkpoint['std_x'], checkpoint['mean_c'], checkpoint['std_c']
 
 # Genera pesi da contesto geometrico (modello allenato su PC)
-# def generate_weights_from_context(context_geom, model_path, samples_per_context):
-#     dim = N_WEIGHTS_TOTAL
-#     context_dim = N_CONTEXT_DIMS
-#     device = torch.device("cpu")
-
-#     model, mean_x, std_x, mean_c, std_c = load_model(model_path, dim, context_dim, NUM_LAYERS)
-#     model.to(device)
-
-#     context_geom = (context_geom - mean_c) / std_c
-#     context_tensor = torch.tensor(context_geom, dtype=torch.float32).repeat(samples_per_context, 1).to(device)
-
-#     with torch.no_grad():
-#         samples, _ = model.sample(samples_per_context, context=context_tensor)
-#     samples = samples.cpu().numpy() * std_x + mean_x
-
-#     # pd.DataFrame(samples).to_csv("generated_weights_geometric_context_0111.csv", index=False, header=False)
-#     # print(f"Salvati {samples.shape[0]} set di pesi ")
-#     return samples
-
-# Genera pesi da contesto geometrico (modello allenato su VM)
-def generate_weights_from_context(context_geom, weight_path, stats_path, samples_per_context):
+def generate_weights_from_context(context_geom, model_path, samples_per_context):
     dim = N_WEIGHTS_TOTAL
     context_dim = N_CONTEXT_DIMS
     device = torch.device("cpu")
-
-    # Carica modello e statistiche
-    model = load_model(weight_path, dim, context_dim, NUM_LAYERS)
+    model, mean_x, std_x, mean_c, std_c = load_model(model_path, dim, context_dim, NUM_LAYERS)
+    #model = load_model(model_path, dim, context_dim, NUM_LAYERS)
     model.to(device)
 
-    stats = np.load(stats_path)
-    mean_x = stats['mean_x']
-    std_x = stats['std_x']
-    mean_c = stats['mean_c']
-    std_c = stats['std_c']
-
-    # Normalizza il contesto
     context_geom = (context_geom - mean_c) / std_c
     context_tensor = torch.tensor(context_geom, dtype=torch.float32).repeat(samples_per_context, 1).to(device)
 
     with torch.no_grad():
         samples, _ = model.sample(samples_per_context, context=context_tensor)
     samples = samples.cpu().numpy() * std_x + mean_x
+
+    # pd.DataFrame(samples).to_csv("generated_weights_geometric_context_0111.csv", index=False, header=False)
+    # print(f"Salvati {samples.shape[0]} set di pesi ")
     return samples
+
+# Genera pesi da contesto geometrico (modello allenato su VM)
+# def generate_weights_from_context(context_geom, weight_path, stats_path, samples_per_context):
+#     dim = N_WEIGHTS_TOTAL
+#     context_dim = N_CONTEXT_DIMS
+#     device = torch.device("cpu")
+
+#     # Carica modello e statistiche
+#     model = load_model(weight_path, dim, context_dim, NUM_LAYERS)
+#     model.to(device)
+
+#     stats = np.load(stats_path)
+#     mean_x = stats['mean_x']
+#     std_x = stats['std_x']
+#     mean_c = stats['mean_c']
+#     std_c = stats['std_c']
+
+#     # Normalizza il contesto
+#     context_geom = (context_geom - mean_c) / std_c
+#     context_tensor = torch.tensor(context_geom, dtype=torch.float32).repeat(samples_per_context, 1).to(device)
+
+#     with torch.no_grad():
+#         samples, _ = model.sample(samples_per_context, context=context_tensor)
+#     samples = samples.cpu().numpy() * std_x + mean_x
+#     return samples
 
 # Converte pesi in traiettorie DMP 
 def weights_to_dmp_trajectories(weights_matrix):
@@ -97,8 +102,8 @@ def weights_to_dmp_trajectories(weights_matrix):
                            alpha_y=ALPHA_Y, beta_y=BETA_Y)
         dmp.set_weights(weights_full)
 
-        start_position = np.array([0.3, 2.7, 0.0])
-        goal_position = np.array([2.7, 0.45, 0.0])
+        start_position = np.array([2.5, 0.5, 0.0])
+        goal_position = np.array([1.0, 2.8, 0.0])
         start_orientation = np.array([0.0, 0.0, 0.0, 1.0])
         goal_orientation = np.array([0.0, 0.0, 0.0, 1.0])
 
@@ -118,19 +123,6 @@ def weights_to_dmp_trajectories(weights_matrix):
         all_trajs.append(Y[:, :2])
     return all_trajs
 
-# MAIN per contesto geomtetrico con 8 parametri
-# if __name__ == "__main__":
-#     print("Inserisci 8 numeri separati da spazio (es: 0.5 1.5 1.2 1.5 0 0 0 0)")
-#     user_input = input("Contesto geometrico (8 valori): ")
-#     try:
-#         context_geom = np.array([float(x) for x in user_input.strip().split()])
-#         assert context_geom.shape[0] == 8
-#     except:
-#         print("ERRORE: devi inserire esattamente 8 numeri separati da spazio.")
-#         sys.exit(1)
-
-#     samples = generate_weights_from_context(context_geom.reshape(1, -1), MODEL_PATH, SAMPLES_PER_CONTEXT)
-#     trajectories = weights_to_dmp_trajectories(samples)
 
 # MAIN per contesto geomtetrico con 4 parametri (solo coord x aperture)
 if __name__ == "__main__":
@@ -162,10 +154,34 @@ if __name__ == "__main__":
     # std_c = np.where(std_c == 0, 1.0, std_c)  # evitare divisione per 0
     # context_geom = (context_geom - mean_c) / std_c
 
+    #VERSIONE CONTESTO CONTINUO
+    # samples = generate_weights_from_context(context_geom, MODEL_PATH, SAMPLES_PER_CONTEXT)
+    # trajectories = weights_to_dmp_trajectories(samples)
 
-    samples = generate_weights_from_context(context_geom, "model_weights.pt", "context_stats.npz", SAMPLES_PER_CONTEXT)
+    ##VERSIONE PER CONTESTO BINARIO 
+    context_bin = np.array([int(c) for c in user_input.strip()], dtype=np.float32).reshape(1, -1)
+    samples = generate_weights_from_context(context_bin, MODEL_PATH, SAMPLES_PER_CONTEXT)
     trajectories = weights_to_dmp_trajectories(samples)
 
+
+    # Salvataggio traiettorie in .csv pronte per la valutazione
+    # output_dir = f"sampled_traj_output/{user_input}"
+    # os.makedirs(output_dir, exist_ok=True)
+
+    # for i, traj in enumerate(trajectories):
+    #     df = pd.DataFrame({
+    #         "dt": np.linspace(0, DEFAULT_EXECUTION_TIME, len(traj)),
+    #         "x": traj[:, 0],
+    #         "y": traj[:, 1],
+    #         "z": 0.0,
+    #         "qx": 0.0,
+    #         "qy": 0.0,
+    #         "qz": 0.0,
+    #         "qw": 1.0
+    #     })
+    #     df.to_csv(os.path.join(output_dir, f"traj_{i:03d}.csv"), index=False)
+
+    # print(f"\nTraiettorie salvate in: {output_dir}")
 
     # Plot
     plt.figure(figsize=(8, 6))
@@ -175,7 +191,7 @@ if __name__ == "__main__":
     # Aggiunta delle aperture
     aperture_coords = np.array([
         [0.5, 1.5],
-        [1.2, 1.5],
+        [1.2, 1.5], 
         [1.9, 1.5], 
         [2.6, 1.5],
         ])

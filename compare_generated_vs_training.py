@@ -92,7 +92,7 @@ for traj in generated_trajs_array:
     plt.plot(traj[:, 0], traj[:, 1], linestyle='--', color='blue', alpha=0.5, linewidth=1.0)
 
 # Nominale
-plt.plot(nominal_traj[:, 0], nominal_traj[:, 1], color='red', linewidth=2.5, label='Nominale')
+plt.plot(nominal_traj[:, 0], nominal_traj[:, 1], color='red', linewidth=2.5, label='Nominal trajectory')
 
 # Fascia lilla
 plt.fill_between(x, y_min, y_max,
@@ -103,12 +103,12 @@ plt.fill_between(x, y_min, y_max,
 plt.scatter(start_y[0], start_y[1], color='green', label='Start', s=50, edgecolors='black')
 plt.scatter(goal_y[0], goal_y[1], color='red', label='Goal', s=50, edgecolors='black')
 # Aggiunta alla legenda: linee fittizie
-plt.plot([], [], color='gray', linewidth=0.8, alpha=0.3, label='Training')
-plt.plot([], [], color='blue', linestyle='--', linewidth=1.0, alpha=0.5, label='Generati')
+plt.plot([], [], color='gray', linewidth=0.8, alpha=0.3, label='Training trajectories')
+plt.plot([], [], color='blue', linestyle='--', linewidth=1.0, alpha=0.5, label='Sampled trajectories')
 
 plt.xlabel("X [m]")
 plt.ylabel("Y [m]")
-plt.title("Confronto spaziale: training, generate, fascia generata")
+plt.title("Training trajectories vs Generated trajectories")
 plt.grid(True)
 plt.legend()
 plt.axis('equal')
